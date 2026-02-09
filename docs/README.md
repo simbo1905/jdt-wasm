@@ -24,9 +24,35 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -->
 
-# JDT Documentation
+# JDT WASM - JSON Document Transforms
 
-This documentation is derived from the official **Microsoft JSON Document Transforms (JDT)** project and describes the JDT specification.
+A Rust-based implementation of **JSON Document Transforms (JDT)** with WebAssembly support.
+
+[🏠 Main Repository](https://github.com/simbo1905/jdt-wasm) | [📦 Examples](https://github.com/simbo1905/jdt-wasm/tree/main/examples)
+
+---
+
+## What is JDT?
+
+JSON Document Transforms (JDT) is a specification for transforming JSON files using another JSON file as the transformation specification. The default behavior is to merge the transformation into the source, with advanced operations available through transformation verbs.
+
+**Transform Verbs:**
+- `@jdt.merge` - Merge values into the source
+- `@jdt.replace` - Replace values in the source  
+- `@jdt.remove` - Remove values from the source
+- `@jdt.rename` - Rename keys in the source
+
+**Key Features:**
+- JSONPath support for targeting specific nodes
+- Recursive transformations for nested objects
+- Filter expressions for conditional operations
+- WebAssembly support for browser/Node.js usage
+
+---
+
+# JDT Specification Documentation
+
+This documentation is derived from the official **Microsoft JSON Document Transforms (JDT)** project.
 
 ## Table of Contents
 

@@ -24,6 +24,8 @@ JDT uses JSONPath expressions (relative to the current node) to target specific 
 
 ## Documentation
 
+📚 **[View Documentation on GitHub Pages](https://simbo1905.github.io/jdt-wasm/)**
+
 The [docs/](./docs/) folder contains the JDT specification documentation derived from the official Microsoft JDT wiki:
 
 - [Home](./docs/Home.md) - Overview and introduction
