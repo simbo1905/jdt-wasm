@@ -35,7 +35,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: wasm32-unknown-unknown
+          targets: wasm32-unknown-unknown, wasm32-wasip1
 
       - uses: Swatinem/rust-cache@v2
 
@@ -53,13 +53,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip1
 
       - uses: Swatinem/rust-cache@v2
 
       - uses: xmake-io/github-action-setup-xmake@v1
         with:
-          xmake-version: "2.9.7"
+          xmake-version: latest
 
-      - name: Run suites
+      - uses: bytecodealliance/actions/wasmtime/setup@v1
+        with:
+          version: latest
+
+      - name: Run compatibility suite
         run: xmake run test_all
