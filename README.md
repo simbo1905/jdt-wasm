@@ -63,11 +63,29 @@ jdt-wasm/
 
 ## Testing
 
-The `jdt-codegen` crate runs against Microsoft's official JSON test fixtures (automatically downloaded into `.tmp/`) and includes the JSONPath compliance suite for future work.
+The `jdt-codegen` crate runs against Microsoft's official JSON test fixtures (automatically downloaded into `.tmp/`) and the JSONPath compliance test suite.
 
 ```bash
 xmake run test_all
 ```
+
+### Test Status
+
+**Microsoft JDT Test Suite**: ✅ Passing  
+**JSONPath Compliance Suite**: 255/703 tests passing (36%)
+
+The JSONPath implementation supports:
+- Basic property accessors (`$.field`, `$['field']`)
+- Array indexing (`$[0]`, `$[-1]`)
+- Filter expressions (`$[?(@.field == 'value')]`)
+- Logical operators in filters (`&&`, `||`, `!`)
+
+Currently unsupported (448 tests skipped):
+- Wildcards (`*`, `$[*]`)
+- Recursive descent (`..`)
+- Array slices (`$[0:5]`, `$[::-1]`)
+
+These features are tracked for future implementation.
 
 ## Requirements
 
