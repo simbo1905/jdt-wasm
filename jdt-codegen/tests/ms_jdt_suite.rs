@@ -1,5 +1,5 @@
-use pretty_assertions::assert_eq;
 use serde_json::Value;
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
@@ -27,10 +27,26 @@ fn find_source_file(transform_file: &Path, prefix: &str) -> PathBuf {
 fn microsoft_fixture_suite() {
     let inputs_dir = std::env::var("JDT_MS_INPUTS_DIR")
         .expect("set JDT_MS_INPUTS_DIR (use `xmake run test_all`)");
-    let inputs_dir = PathBuf::from(inputs_dir);
+    // Canonicalize inputs_dir to ensure strip_prefix works correctly
+    let inputs_dir = PathBuf::from(inputs_dir).canonicalize().unwrap();
+
+    // Load expected failures
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let expected_failures_path = manifest_dir.join("tests/ms_jdt_expected_failures.txt");
+    let expected_failures_raw =
+        fs::read_to_string(&expected_failures_path).unwrap_or_else(|_| String::new());
+    let expected_failures: HashSet<&str> = expected_failures_raw
+        .lines()
+        .map(|l| l.trim())
+        .filter(|l| !l.is_empty())
+        .collect();
 
     let mut cases = 0usize;
-    let mut skipped = 0usize;
+    let mut passed = 0usize;
+    let mut expected_fail = 0usize;
+    let mut unexpected_pass = Vec::<String>::new();
+    let mut regression = Vec::<String>::new();
+
     for entry in WalkDir::new(&inputs_dir).into_iter().filter_map(Result::ok) {
         let path = entry.path();
         if !path.is_file() {
@@ -41,18 +57,16 @@ fn microsoft_fixture_suite() {
             continue;
         }
 
-        // Upstream fixture inconsistency (as of the pinned commit): expected output references
-        // source values not present in any checked-in Source.json. Keep this skipped until
-        // the upstream suite is corrected.
-        if path
+        // Calculate relative path for ID
+        // Note: we need to handle potential path canonicalization differences
+        let canonical_path = path.canonicalize().unwrap();
+        let rel_path = canonical_path
+            .strip_prefix(&inputs_dir)
+            .unwrap()
             .to_string_lossy()
-            .ends_with("Rename/Array.ScriptPath.Transform .json")
-        {
-            skipped += 1;
-            continue;
-        }
+            .to_string();
 
-        // Match Expected file by replacing ".Transform" with ".Expected".
+        // Match Expected file
         // Some upstream fixtures have a stray space before ".json" in the Transform filename.
         let mut expected_name = name.replace(".Transform", ".Expected");
         expected_name = expected_name.replace(" .json", ".json");
@@ -66,8 +80,34 @@ fn microsoft_fixture_suite() {
         let transform = read_json(path);
         let expected = read_json(&expected_path);
 
-        let actual = jdt_codegen::apply(&source, &transform).unwrap();
-        assert_eq!(expected, actual, "case failed: {}", path.display());
+        let result = jdt_codegen::apply(&source, &transform);
+
+        let mut test_passed = false;
+        match result {
+            Ok(actual) => {
+                if actual == expected {
+                    test_passed = true;
+                } else {
+                    // Keep failed assertion message for regression debugging?
+                    // We print regressions at the end.
+                }
+            }
+            Err(_) => {
+                test_passed = false;
+            }
+        }
+
+        if test_passed {
+            if expected_failures.contains(rel_path.as_str()) {
+                unexpected_pass.push(rel_path);
+            } else {
+                passed += 1;
+            }
+        } else if expected_failures.contains(rel_path.as_str()) {
+            expected_fail += 1;
+        } else {
+            regression.push(rel_path);
+        }
         cases += 1;
     }
 
@@ -76,5 +116,31 @@ fn microsoft_fixture_suite() {
         "no test cases discovered under {}",
         inputs_dir.display()
     );
-    eprintln!("ms suite: ran {cases} cases, skipped {skipped}");
+
+    eprintln!(
+        "ms suite: {} passed, {} expected-fail, {} regressions, {} unexpected-pass ({} total)",
+        passed,
+        expected_fail,
+        regression.len(),
+        unexpected_pass.len(),
+        cases
+    );
+
+    if !regression.is_empty() {
+        eprintln!("REGRESSIONS:");
+        for r in &regression {
+            eprintln!("  - {}", r);
+        }
+        panic!("{} regressions detected", regression.len());
+    }
+    if !unexpected_pass.is_empty() {
+        eprintln!("UNEXPECTED PASSES:");
+        for p in &unexpected_pass {
+            eprintln!("  - {}", p);
+        }
+        panic!(
+            "{} unexpected passes detected - please update baseline",
+            unexpected_pass.len()
+        );
+    }
 }

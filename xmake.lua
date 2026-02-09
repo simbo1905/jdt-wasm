@@ -95,14 +95,41 @@ target("fetch_jsonpath_suite")
     end)
 target_end()
 
-target("test_all")
+target("test_jdt")
     set_kind("phony")
     on_run(function ()
         local inputs = fetch_ms_suite(os, path)
+        os.setenv("JDT_MS_INPUTS_DIR", inputs)
+        os.vrunv("cargo", {"test", "-p", "jdt-codegen", "--test", "ms_jdt_suite", "--", "--nocapture"})
+    end)
+target_end()
+
+target("test_jsonpath")
+    set_kind("phony")
+    on_run(function ()
         local cts = fetch_jsonpath_suite(os, path)
+        os.setenv("JSONPATH_CTS_JSON", cts)
+        os.vrunv("cargo", {"test", "-p", "jdt-codegen", "--test", "jsonpath_cts", "--", "--nocapture"})
+    end)
+target_end()
+
+target("test_all")
+    set_kind("phony")
+    on_run(function ()
+        -- Quality checks
+        os.vrunv("cargo", {"fmt", "--all", "--", "--check"})
+        os.vrunv("cargo", {"clippy", "--workspace", "--all-targets", "--", "-D", "warnings"})
+
+        -- Run integration test suites
+        local inputs = fetch_ms_suite(os, path)
+        local cts = fetch_jsonpath_suite(os, path)
+        
         os.setenv("JDT_MS_INPUTS_DIR", inputs)
         os.setenv("JSONPATH_CTS_JSON", cts)
-        os.vrunv("cargo", {"test", "-p", "jdt-codegen", "--", "--nocapture"})
+        
+        -- Run all tests (unit + integration)
+        os.vrunv("cargo", {"test", "--workspace"})
+        
         cprint("${green}OK:${clear} test_all")
     end)
 target_end()
